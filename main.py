@@ -110,7 +110,7 @@ def format_dataframe(df):
     ].style.format({p_gold: "{:.9f}", p_total: "{:.9f}"})
 
 
-st.title("The Olympics most (statistically) EXCEPTIONAL Country is...")
+st.title("The Olympics' most exceptional country (statistically) is...")
 
 best_country = df[country_name].iloc[0]
 html_content = f"""
