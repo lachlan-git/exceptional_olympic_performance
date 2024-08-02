@@ -99,6 +99,8 @@ p_gold = "P(This Many Golds)"
 p_total = "P(This Many Medals)"
 df = calculate_p_values(df, gold, p_gold)
 df = calculate_p_values(df, total, p_total)
+df[rank] = list(range(len(df)))
+df[rank] = df[rank] + 1
 df = df.sort_values(by=p_gold)
 
 
