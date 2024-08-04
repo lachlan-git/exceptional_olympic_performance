@@ -5,18 +5,20 @@ import pandas as pd
 from bs4 import BeautifulSoup
 from datetime import datetime
 import scipy
+import numpy as np
+import mpmath
 
+mpmath.mp.dps = 300
 import os
 from pathlib import Path
 
 CURRENT_WORLD_POP = 8_125_468_789
-
+EQUAL_POPULATION = CURRENT_WORLD_POP / 206
 url = "https://en.wikipedia.org/wiki/2024_Summer_Olympics_medal_table"
 time_format = "%Y_%m_%d %H_%M_%S"
 current_working_dir = Path(os.getcwd())
 max_second_delta = 60 * 30
 
-# %%
 # %%
 # URL of the Wikipedia page
 populations = pd.read_csv(current_working_dir / "pop.txt")
@@ -83,23 +85,75 @@ rank, country_name, gold, silver, bronze, total = list(df.columns)
 df = pd.merge(df, populations, how="left", on="NOC")
 
 
-def calculate_p_values(df: pd.DataFrame, column, result_name):
+def poisson_cdf(k, mu):
+    return mpmath.nsum(lambda x: mpmath.exp(-mu) * (mu**x) / mpmath.fac(x), [0, k])
+
+
+def poisson_ppf(q, mu):
+    k = 0
+    while poisson_cdf(k, mu) < q:
+        k += 1
+        if k >= 75:
+            return np.nan
+    return k
+
+
+# def binomial_cdf(k, n, p):
+#     return mpmath.nsum(
+#         lambda x: mpmath.binomial(n, x) * (p**x) * ((1 - p) ** (n - x)), [0, k]
+#     )
+
+
+def calculate_p_values(df: pd.DataFrame, column, result_name, equiv_medal_name):
     # probability person wins medal
+    log_result_name = f"log {result_name}"
+
     p = float(df[column].sum() / CURRENT_WORLD_POP)
-    prob_at_least_this_num = lambda row: 1 - scipy.stats.binom.cdf(
-        row[column] - 1, row["population"], p
+
+    prob_at_least_this_num = lambda row: float(
+        1 - poisson_cdf(row[column] - 1, p * row["population"])
+    )
+
+    population_adjusted_medals = (
+        lambda row: poisson_ppf(float(1 - row[result_name]), EQUAL_POPULATION * p) + 1
     )
 
     df[result_name] = df.apply(prob_at_least_this_num, axis=1)
+    df[log_result_name] = -np.log(df[result_name])
+    df[equiv_medal_name] = df.apply(population_adjusted_medals, axis=1)
+
+    # we still have some precision errors with making equivilent number
+    # of medals, we will just linear interpolate with the square of the number medals
+    # if you squint at the normal distribution this will make sense particularly as
+    # x-mu is large
+    equiv_medal_is_nan = df[equiv_medal_name].isna()
+    df_no_nan = df[~equiv_medal_is_nan]
+    # y=mx+c
+    m, c, r_value, p_value, std_err = scipy.stats.linregress(
+        df_no_nan[log_result_name],
+        df_no_nan[equiv_medal_name] ** 2,  # equivilent number of medals squared
+    )
+    print(equiv_medal_is_nan)
+    return df.loc[equiv_medal_is_nan]
+    df.loc[equiv_medal_is_nan, equiv_medal_name] = (
+        df.loc[equiv_medal_is_nan, df_no_nan[log_result_name]] * m + c
+    )
 
     return df
 
 
-p_gold = "P(This Many Golds)"
-p_total = "P(This Many Medals)"
-df = calculate_p_values(df, gold, p_gold)
-df = calculate_p_values(df, total, p_total)
-df = df.sort_values(by=p_gold)
+p_gold = "likelihood of this many golds"
+equiv_num_gold = "number golds corrected for population"
+p_total = "likelihood of this many medals"
+equiv_num_medals = "number medals corrected for population"
+df = calculate_p_values(df, gold, p_gold, equiv_num_gold)
+df = calculate_p_values(df, total, p_total, equiv_num_medals)
+df = df.sort_values(by=equiv_num_gold, ascending=False)
+df
+
+df = df[df[country_name] != "Individual Neutral Athletes[A]"]
+
+
 df[rank] = list(range(len(df)))
 df[rank] = df[rank] + 1
 
