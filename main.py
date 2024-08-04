@@ -165,7 +165,17 @@ def format_dataframe(df, advanced_statistics):
     df[equiv_num_medals] = df[equiv_num_medals].astype(int)
     if not advanced_statistics:
         return (
-            df[[rank, country_name, gold, equiv_num_gold, total, equiv_num_medals]]
+            df[
+                [
+                    rank,
+                    country_name,
+                    gold,
+                    equiv_num_gold,
+                    total,
+                    equiv_num_medals,
+                    "population",
+                ]
+            ]
             .rename(columns={total: "Total Medals"})
             .style.format({p_gold: "{:.9f}", p_total: "{:.9f}"})
         )
