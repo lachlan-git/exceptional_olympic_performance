@@ -114,8 +114,8 @@ def calculate_p_values(df: pd.DataFrame, column, result_name, equiv_medal_name):
         1 - poisson_cdf(row[column] - 1, p * row["population"])
     )
 
-    population_adjusted_medals = (
-        lambda row: poisson_ppf(float(1 - row[result_name]), EQUAL_POPULATION * p) + 1
+    population_adjusted_medals = lambda row: poisson_ppf(
+        float(1 - row[result_name]), EQUAL_POPULATION * p
     )
 
     df[result_name] = df.apply(prob_at_least_this_num, axis=1)
@@ -125,31 +125,29 @@ def calculate_p_values(df: pd.DataFrame, column, result_name, equiv_medal_name):
     # we still have some precision errors with making equivilent number
     # of medals, we will just linear interpolate with the square of the number medals
     # if you squint at the normal distribution this will make sense particularly as
-    # x-mu is large
+    # x-mu is large compared to theta,
     equiv_medal_is_nan = df[equiv_medal_name].isna()
-    df_no_nan = df[~equiv_medal_is_nan]
+    df_no_nan = df.dropna()  # [~equiv_medal_is_nan]
     # y=mx+c
     m, c, r_value, p_value, std_err = scipy.stats.linregress(
         df_no_nan[log_result_name],
         df_no_nan[equiv_medal_name] ** 2,  # equivilent number of medals squared
     )
-    print(equiv_medal_is_nan)
-    return df.loc[equiv_medal_is_nan]
+    # return df.loc[equiv_medal_is_nan]
     df.loc[equiv_medal_is_nan, equiv_medal_name] = (
-        df.loc[equiv_medal_is_nan, df_no_nan[log_result_name]] * m + c
-    )
+        (df.loc[equiv_medal_is_nan, log_result_name] * m + c) ** 0.5
+    ).astype(int)
 
     return df
 
 
 p_gold = "likelihood of this many golds"
-equiv_num_gold = "number golds corrected for population"
+equiv_num_gold = "Corrected Gold"
 p_total = "likelihood of this many medals"
-equiv_num_medals = "number medals corrected for population"
+equiv_num_medals = "Corrected Total Medals"
 df = calculate_p_values(df, gold, p_gold, equiv_num_gold)
 df = calculate_p_values(df, total, p_total, equiv_num_medals)
 df = df.sort_values(by=equiv_num_gold, ascending=False)
-df
 
 df = df[df[country_name] != "Individual Neutral Athletes[A]"]
 
@@ -157,13 +155,22 @@ df = df[df[country_name] != "Individual Neutral Athletes[A]"]
 df[rank] = list(range(len(df)))
 df[rank] = df[rank] + 1
 
+df["Golds per 100 Million"] = 1e8 * df["Gold"] / df["population"]
+df["Medals per 100 Million"] = 1e8 * df["Total"] / df["population"]
+
 
 # %%
-def format_dataframe(df):
+def format_dataframe(df, advanced_statistics):
     # df[p_gold] = df[p_gold].apply(lambda x: f"{x:.7f}")
-    return df[
-        [rank, country_name, p_gold, p_total, gold, silver, bronze, total, "population"]
-    ].style.format({p_gold: "{:.9f}", p_total: "{:.9f}"})
+    df[equiv_num_medals] = df[equiv_num_medals].astype(int)
+    if not advanced_statistics:
+        return (
+            df[[rank, country_name, gold, equiv_num_gold, total, equiv_num_medals]]
+            .rename(columns={total: "Total Medals"})
+            .style.format({p_gold: "{:.9f}", p_total: "{:.9f}"})
+        )
+
+    return df.style.format({p_gold: "{:.9f}", p_total: "{:.9f}"})
 
 
 st.title("The Olympics' most exceptional country (statistically) is...")
@@ -177,13 +184,29 @@ html_content = f"""
 
 # Display the HTML content in Streamlit
 st.markdown(html_content, unsafe_allow_html=True)
+left_col, right_col = st.columns([4, 1])
+with left_col:
+    st.markdown(
+        """
+        The table shows the number of medals a country would win if we **correctly** adjusted for population using statistics!
+        """
+    )
 
-st.markdown("and here are the stats...")
+with right_col:
+    # st.markdown("<br/><br/>", unsafe_allow_html=True)
+    advanced_stats_dataframe = st.checkbox("Advanced Stats")
 
-st.dataframe(format_dataframe(df))
+st.dataframe(format_dataframe(df, advanced_stats_dataframe))
+
+st.markdown("\* _Host Country_")
 
 st.markdown(
-    """
-    *The table shows the probability of a country achieving this many medals, assuming every citizen has an equal chance of winning, highlighting how statistically improbable a countries performance is.*
-    """
+    f"""
+    **How did I get these numbers?**
+
+    These numbers were calculated by assuming every person in the world has an equal chance of winning a medal. The top countries had the most statistically significant performance given their population. Interpret it as "That country is doing well given there population!". This is much more meaningful the medals per Capita.
+
+    For the full methodology and code, check out: [Population Adjusted Medals](https://github.com/lachlan-git/exceptional_olympic_performance)
+    """,
+    unsafe_allow_html=True,
 )
