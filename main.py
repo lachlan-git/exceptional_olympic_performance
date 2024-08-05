@@ -178,7 +178,7 @@ def format_dataframe(df, advanced_statistics):
                 ]
             ]
             .rename(columns={total: "Total Medals", "population": "Population"})
-            .style.format({p_gold: "{:.9f}", p_total: "{:.9f}"})
+            .style.format({p_gold: "{:.9f}", p_total: "{:.9f}", "Population": "{:,"})
         )
 
     return df.style.format({p_gold: "{:.9f}", p_total: "{:.9f}"})
@@ -215,7 +215,7 @@ st.markdown(
     f"""
     **How did I get these numbers?**
 
-    These numbers were calculated by assuming every person in the world has an equal chance of winning a medal. The top countries had the most statistically significant performance given their population. Interpret the table as "That country is doing well given there population!". This is much more meaningful the medals per Capita.
+    These numbers were calculated by assuming every person in the world has an equal chance of winning a medal. The top countries had the most statistically significant performance given their population. Interpret the table as "That country is doing well given there population!". This is much more meaningful replacement for medals per Capita.
 
     For the full methodology and code, check out: [Population Adjusted Medals](https://github.com/lachlan-git/exceptional_olympic_performance)
     """,
