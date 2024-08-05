@@ -10,4 +10,4 @@ We fetch the latest Olympic medal data from Wikipedia and population data from a
 ### Statistical Models
 1. **Poisson Distribution**
    - The Poisson distribution is used to model the probability of winning a certain number of medals. The probability that a country wins at least `k` medals, given its population, is calculated using the cumulative distribution function (CDF) of the Poisson distribution.
-   - The Poisson percent-point function (PPF) is used to find the equivalent number of medals a country would win if it had the same population as the average country in the world.
+   - The Poisson percent-point function (PPF) is used to find the equivalent number of medals a country would win if it had the same population as the average country the olympic committee.
