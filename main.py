@@ -147,7 +147,7 @@ p_total = "likelihood of this many medals"
 equiv_num_medals = "Corrected Total Medals"
 df = calculate_p_values(df, gold, p_gold, equiv_num_gold)
 df = calculate_p_values(df, total, p_total, equiv_num_medals)
-df = df.sort_values(by=equiv_num_gold, ascending=False)
+df = df.sort_values(by=p_gold)
 
 df = df[df[country_name] != "Individual Neutral Athletes[A]"]
 
