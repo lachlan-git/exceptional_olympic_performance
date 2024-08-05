@@ -178,7 +178,7 @@ def format_dataframe(df, advanced_statistics):
                 ]
             ]
             .rename(columns={total: "Total Medals", "population": "Population"})
-            .style.format({p_gold: "{:.9f}", p_total: "{:.9f}", "Population": "{:,"})
+            .style.format({p_gold: "{:.9f}", p_total: "{:.9f}", "Population": "{:,}"})
         )
 
     return df.style.format({p_gold: "{:.9f}", p_total: "{:.9f}"})
