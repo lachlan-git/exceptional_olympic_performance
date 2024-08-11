@@ -163,6 +163,7 @@ df["Medals per 100 Million"] = 1e8 * df["Total"] / df["population"]
 def format_dataframe(df, advanced_statistics):
     # df[p_gold] = df[p_gold].apply(lambda x: f"{x:.7f}")
     df[equiv_num_medals] = df[equiv_num_medals].astype(int)
+    df["population"] = df["population"].fillna(0)
     df["population"] = df["population"].astype(int)
     if not advanced_statistics:
         return (
@@ -221,3 +222,5 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
+
+# %%
